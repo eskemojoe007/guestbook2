@@ -9,7 +9,7 @@
     [reitit.ring.middleware.parameters :as parameters]
     [guestbook2.middleware.formats :as formats]
     [guestbook2.middleware.exception :as exception]
-    [ring.util.http-response :refer :all]
+    [ring.util.http-response :refer [ok]]
     [clojure.java.io :as io]))
 
 (defn service-routes []
@@ -49,7 +49,7 @@
 
    ["/ping"
     {:get (constantly (ok {:message "pong"}))}]
-   
+
 
    ["/math"
     {:swagger {:tags ["math"]}}

@@ -1,6 +1,6 @@
 (ns guestbook2.test.handler
   (:require
-    [clojure.test :refer :all]
+    [clojure.test :refer [deftest use-fixtures is are]]
     [ring.mock.request :refer :all]
     [guestbook2.handler :refer :all]
     [guestbook2.middleware.formats :as formats]

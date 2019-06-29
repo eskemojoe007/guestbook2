@@ -2,7 +2,7 @@
   (:require
     [guestbook2.db.core :refer [*db*] :as db]
     [luminus-migrations.core :as migrations]
-    [clojure.test :refer :all]
+    [clojure.test :refer [deftest is are use-fixtures]]
     [clojure.java.jdbc :as jdbc]
     [guestbook2.config :refer [env]]
     [mount.core :as mount]))
