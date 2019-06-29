@@ -81,7 +81,7 @@
 
 (defn init! []
   (rf/dispatch-sync [:navigate (reitit/match-by-name router :home)])
-  
+
   (ajax/load-interceptors!)
   (rf/dispatch [:fetch-docs])
   (hook-browser-navigation!)

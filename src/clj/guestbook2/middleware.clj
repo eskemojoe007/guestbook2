@@ -11,8 +11,8 @@
     [guestbook2.config :refer [env]]
     [ring-ttl-session.core :refer [ttl-memory-store]]
     [ring.middleware.defaults :refer [site-defaults wrap-defaults]])
-  (:import 
-           ))
+  (:import))
+
 
 (defn wrap-internal-error [handler]
   (fn [req]
