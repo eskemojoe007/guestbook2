@@ -9,8 +9,10 @@
     [reitit.ring.middleware.parameters :as parameters]
     [guestbook2.middleware.formats :as formats]
     [guestbook2.middleware.exception :as exception]
-    [ring.util.http-response :refer [ok]]
-    [clojure.java.io :as io]))
+    [ring.util.http-response :refer [ok bad-request internal-server-error]]
+    [clojure.java.io :as io]
+    [java-time :as time]
+    [guestbook2.messages :as msg]))
 
 (defn service-routes []
   ["/api"
@@ -88,4 +90,41 @@
                         :headers {"Content-Type" "image/png"}
                         :body (-> "public/img/warning_clojure.png"
                                   (io/resource)
-                                  (io/input-stream))})}}]]])
+                                  (io/input-stream))})}}]]
+
+
+   ["/messages"
+    {:get {:summary "pulls all messages from database"
+           :swagger {:tags ["messages"]}
+           :responses {200 {:body {:messages [{:id pos-int?
+                                               :name string?
+                                               :message string?
+                                               :timestamp time/local-date-time?}]}}}
+           :handler (fn [_]
+                      (ok (msg/message-list)))}}]
+   ["/message"
+    {:post {:summary "adds a new message to the database"
+            :swagger {:tags ["messages"]}
+            :parameters {:body {:name string? :message string?}}
+
+            ;; We extract the message from parameters -> body and call the message
+            :handler (fn [{{message :body} :parameters}]
+                       (try
+                         ;; Save the message and return ok with extra ok status.
+                         (msg/save-message! message)
+                         (ok {:status :ok})
+                         (catch Exception e
+                           ;; this line is using destructuring from the (ex-data e)
+                           ;; to get the id and actual errors set by save-message!
+                           (let [{id :guestbook2/error-id
+                                  errors :errors} (ex-data e)]
+
+                             ;; Depending on ID we'll do different responses
+                             (case id
+                               :validation
+                               (bad-request {:errors errors})
+                               ;; else case - Simple server error map
+                               (internal-server-error
+                                {:errors
+                                 {:server-error
+                                  ["Failed to save message!"]}}))))))}}]])

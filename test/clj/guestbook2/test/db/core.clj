@@ -35,6 +35,7 @@
                  (-> (db/get-messages t-conn {})
                      (first)
                      (select-keys [:name :message]))))
+          ;; TODO: Conver this to time/before? or time/after?
           (testing "- timestamp is before now"
             (is (>= 0 (compare
                         timestamp
