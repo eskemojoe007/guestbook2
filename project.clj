@@ -72,7 +72,7 @@
                             :closure-warnings
                             {:externs-validation :off :non-standard-jsdoc :off}
                             :externs ["react/externs/react.js"]}}}}
-             
+
              :aot :all
              :uberjar-name "guestbook2.jar"
              :source-paths ["env/prod/clj"]
@@ -95,26 +95,27 @@
                   :plugins      [[com.jakemccrary/lein-test-refresh "0.24.1"]
                                  [lein-doo "0.1.11"]
                                  [lein-figwheel "0.5.19"]]
-                  :cljsbuild{:builds
-                             {:app
-                              {:source-paths ["src/cljs" "src/cljc" "env/dev/cljs"]
-                               :figwheel {:on-jsload "guestbook2.core/mount-components"}
-                               :compiler
-                               {:output-dir "target/cljsbuild/public/js/out"
-                                :closure-defines {"re_frame.trace.trace_enabled_QMARK_" true}
-                                :optimizations :none
-                                :preloads [re-frisk.preload]
-                                :output-to "target/cljsbuild/public/js/app.js"
-                                :asset-path "/js/out"
-                                :source-map true
-                                :main "guestbook2.app"
-                                :pretty-print true}}}}
+                  :cljsbuild {:builds
+                              {:app
+                               {:source-paths ["src/cljs" "src/cljc" "env/dev/cljs"]
+                                :figwheel {:on-jsload "guestbook2.core/mount-components"}
+                                :compiler
+                                {:output-dir "target/cljsbuild/public/js/out"
+                                 :closure-defines {"re_frame.trace.trace_enabled_QMARK_" true}
+                                 :optimizations :none
+                                 :preloads [re-frisk.preload]
+                                 :output-to "target/cljsbuild/public/js/app.js"
+                                 :asset-path "/js/out"
+                                 :source-map true
+                                 :main "guestbook2.app"
+                                 :pretty-print true}}}}
 
 
                   :doo {:build "test"}
                   :source-paths ["env/dev/clj"]
                   :resource-paths ["env/dev/resources"]
-                  :repl-options {:init-ns user}
+                  :repl-options {:init-ns user
+                                 :nrepl-middleware [cider.piggieback/wrap-cljs-repl]}
                   :injections [(require 'pjstadig.humane-test-output)
                                (pjstadig.humane-test-output/activate!)]}
    :project/test {:jvm-opts ["-Dconf=test-config.edn"]
