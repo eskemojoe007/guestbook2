@@ -16,3 +16,6 @@ profiles.clj
 /log
 scratch.clj
 guestbook2_dev.db.mv.db
+guestbook2_dev.db.trace.db
+guestbook2_test.db.trace.db
+guestbook2_test.db.mv.db
