@@ -1,18 +1,18 @@
 (ns guestbook2.routes.services
   (:require
-    [reitit.swagger :as swagger]
-    [reitit.swagger-ui :as swagger-ui]
-    [reitit.ring.coercion :as coercion]
-    [reitit.coercion.spec :as spec-coercion]
-    [reitit.ring.middleware.muuntaja :as muuntaja]
-    [reitit.ring.middleware.multipart :as multipart]
-    [reitit.ring.middleware.parameters :as parameters]
-    [guestbook2.middleware.formats :as formats]
-    [guestbook2.middleware.exception :as exception]
-    [ring.util.http-response :refer [ok bad-request internal-server-error]]
-    [clojure.java.io :as io]
-    [java-time :as time]
-    [guestbook2.messages :as msg]))
+   [reitit.swagger :as swagger]
+   [reitit.swagger-ui :as swagger-ui]
+   [reitit.ring.coercion :as coercion]
+   [reitit.coercion.spec :as spec-coercion]
+   [reitit.ring.middleware.muuntaja :as muuntaja]
+   [reitit.ring.middleware.multipart :as multipart]
+   [reitit.ring.middleware.parameters :as parameters]
+   [guestbook2.middleware.formats :as formats]
+   [guestbook2.middleware.exception :as exception]
+   [ring.util.http-response :refer [ok bad-request internal-server-error]]
+   [clojure.java.io :as io]
+   [java-time :as time]
+   [guestbook2.messages :as msg]))
 
 (defn service-routes []
   ["/api"
@@ -46,12 +46,11 @@
 
     ["/api-docs/*"
      {:get (swagger-ui/create-swagger-ui-handler
-             {:url "/api/swagger.json"
-              :config {:validator-url nil}})}]]
+            {:url "/api/swagger.json"
+             :config {:validator-url nil}})}]]
 
    ["/ping"
     {:get (constantly (ok {:message "pong"}))}]
-
 
    ["/math"
     {:swagger {:tags ["math"]}}
@@ -92,7 +91,6 @@
                                   (io/resource)
                                   (io/input-stream))})}}]]
 
-
    ["/messages"
     {:get {:summary "pulls all messages from database"
            :swagger {:tags ["messages"]}
@@ -108,23 +106,24 @@
             :parameters {:body {:name string? :message string?}}
 
             ;; We extract the message from parameters -> body and call the message
-            :handler (fn [{{message :body} :parameters}]
-                       (try
-                         ;; Save the message and return ok with extra ok status.
-                         (msg/save-message! message)
-                         (ok {:status :ok})
-                         (catch Exception e
-                           ;; this line is using destructuring from the (ex-data e)
-                           ;; to get the id and actual errors set by save-message!
-                           (let [{id :guestbook2/error-id
-                                  errors :errors} (ex-data e)]
+            :handler
+            (fn [{{message :body} :parameters}]
+              (try
+                ;; Save the message and return ok with extra ok status.
+                (msg/save-message! message)
+                (ok {:status :ok})
+                (catch Exception e
+                  ;; this line is using destructuring from the (ex-data e)
+                  ;; to get the id and actual errors set by save-message!
+                  (let [{id :guestbook2/error-id
+                         errors :errors} (ex-data e)]
 
-                             ;; Depending on ID we'll do different responses
-                             (case id
-                               :validation
-                               (bad-request {:errors errors})
-                               ;; else case - Simple server error map
-                               (internal-server-error
-                                {:errors
-                                 {:server-error
-                                  ["Failed to save message!"]}}))))))}}]])
+                    ;; Depending on ID we'll do different responses
+                    (case id
+                      :validation
+                      (bad-request {:errors errors})
+                      ;; else case - Simple server error map
+                      (internal-server-error
+                       {:errors
+                        {:server-error
+                         ["Failed to save message!"]}}))))))}}]])

@@ -48,7 +48,8 @@
 
   :plugins [[lein-cljsbuild "1.1.7"]]
   :clean-targets ^{:protect false}
-  [:target-path [:cljsbuild :builds :app :compiler :output-dir] [:cljsbuild :builds :app :compiler :output-to]]
+  [:target-path [:cljsbuild :builds :app :compiler :output-dir]
+                [:cljsbuild :builds :app :compiler :output-to]]
   :figwheel
   {:http-server-root "public"
    :server-logfile "log/figwheel-logfile.log"
@@ -90,7 +91,8 @@
                                  [figwheel-sidecar "0.5.19"]
                                  [pjstadig/humane-test-output "0.9.0"]
                                  [prone "1.6.4"]
-                                 [re-frisk "0.5.4.1"]
+                                 ; [re-frisk "0.5.4.1"]
+                                 [day8.re-frame/re-frame-10x "0.3.3-react16"]
                                  [ring/ring-devel "1.7.1"]
                                  [ring/ring-mock "0.4.0"]]
                   :plugins      [[com.jakemccrary/lein-test-refresh "0.24.1"]
@@ -104,7 +106,8 @@
                                 {:output-dir "target/cljsbuild/public/js/out"
                                  :closure-defines {"re_frame.trace.trace_enabled_QMARK_" true}
                                  :optimizations :none
-                                 :preloads [re-frisk.preload]
+                                 ; :preloads [re-frisk.preload]
+                                 :preloads [day8.re-frame-10x.preload]
                                  :output-to "target/cljsbuild/public/js/app.js"
                                  :asset-path "/js/out"
                                  :source-map true

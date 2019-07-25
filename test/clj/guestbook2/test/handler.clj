@@ -17,6 +17,7 @@
                  #'guestbook2.handler/app)
     (f)))
 
+;; TODO: Fix this test and add /message and /messages
 #_(deftest test-app
    (testing "main route"
      (let [response (app (request :get "/"))]
