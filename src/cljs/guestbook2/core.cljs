@@ -4,7 +4,8 @@
    [re-frame.core :as rf]
    [ajax.core :refer [GET POST]]
    [clojure.string :as string]
-   [guestbook2.validation :refer [validate-message]]))
+   [guestbook2.validation :refer [validate-message]]
+   [guestbook2.websockets :as ws]))
 
 
 ; (-> (.getElementById js/document "content")
@@ -20,9 +21,9 @@
 (rf/reg-event-fx
  :app/initialize
  (fn [_ _]
-   {:db {:messages/loading? true
-         :form/fields {:name ""
-                       :message ""}}
+   {:db {:messages/loading? true}
+         ; :form/fields {:name ""
+         ;               :message ""}}
     :dispatch [:messages/load]}))
 
 ;; Mess with messages
@@ -115,15 +116,16 @@
 (rf/reg-event-fx
  :message/send!
  (fn [{:keys [db]} [_ fields]]
-   (POST "/api/message"
-         {:format :json
-          :headers {"Accept" "application/json"
-                    "x-csrf-token" (.-value (.getElementById js/document "token"))}
-          :params fields
-          :handler #(rf/dispatch [:message/add (-> fields
-                                                   (assoc :timestamp (js/Date.)))])
-          :error-handler #(rf/dispatch [:form/set-server-errors
-                                        (get-in % [:response :errors])])})
+   (ws/send-message! fields)
+   ; (POST "/api/message"
+   ;       {:format :json
+   ;        :headers {"Accept" "application/json"
+   ;                  "x-csrf-token" (.-value (.getElementById js/document "token"))}
+   ;        :params fields
+   ;        :handler #(rf/dispatch [:message/add (-> fields
+   ;                                                 (assoc :timestamp (js/Date.)))])
+   ;        :error-handler #(rf/dispatch [:form/set-server-errors
+   ;                                      (get-in % [:response :errors])])})
    ; Set server errors to 0, the dispatch above will set them async if they exist
    {:db (dissoc db :form/server-errors)}))
 
@@ -135,6 +137,14 @@
          :handler #(rf/dispatch [:messages/set (:messages %)])})
    ; Similar to above, set loading, :message/set will change to false when done.
    {:db (assoc db :messages/loading? true)}))
+
+(defn handle-response!
+  [response]
+  (if-let [errors (:errors response)]
+    (rf/dispatch [:form/set-server-errors errors])
+    (do
+      (rf/dispatch [:message/add response])
+      (rf/dispatch [:form/clear-fields response]))))
 
 ;;;; Reagent Functions
 ; (defn get-messages
@@ -228,6 +238,7 @@
   []
   (.log js.console "Initializing App..")
   (rf/dispatch [:app/initialize])
+  (ws/connect! (str "ws://" (.-host js/location) "/ws") handle-response!)
   ; (get-messages)
   (mount-components))
 ; (.log js/console "guestbook.core evaluated!")

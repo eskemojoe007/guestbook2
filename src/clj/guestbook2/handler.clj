@@ -4,6 +4,7 @@
     [guestbook2.layout :refer [error-page]]
     [guestbook2.routes.home :refer [home-routes]]
     [guestbook2.routes.services :refer [service-routes]]
+    ; [guestbook2.routes.websockets :refer [websocket-routes]]
     [reitit.swagger-ui :as swagger-ui]
     [reitit.ring :as ring]
     [ring.middleware.content-type :refer [wrap-content-type]]
@@ -21,6 +22,7 @@
     (ring/router
       [(home-routes)
        (service-routes)])
+       ; (websocket-routes)])
     (ring/routes
       (swagger-ui/create-swagger-ui-handler
         {:path   "/swagger-ui"
