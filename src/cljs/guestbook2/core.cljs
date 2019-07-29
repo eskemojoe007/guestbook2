@@ -4,8 +4,8 @@
    [re-frame.core :as rf]
    [ajax.core :refer [GET POST]]
    [clojure.string :as string]
-   [guestbook2.validation :refer [validate-message]]
-   [guestbook2.websockets :as ws]))
+   [guestbook2.validation :refer [validate-message]]))
+   ; [guestbook2.websockets :as ws]))
 
 
 ; (-> (.getElementById js/document "content")
@@ -116,16 +116,16 @@
 (rf/reg-event-fx
  :message/send!
  (fn [{:keys [db]} [_ fields]]
-   (ws/send-message! fields)
-   ; (POST "/api/message"
-   ;       {:format :json
-   ;        :headers {"Accept" "application/json"
-   ;                  "x-csrf-token" (.-value (.getElementById js/document "token"))}
-   ;        :params fields
-   ;        :handler #(rf/dispatch [:message/add (-> fields
-   ;                                                 (assoc :timestamp (js/Date.)))])
-   ;        :error-handler #(rf/dispatch [:form/set-server-errors
-   ;                                      (get-in % [:response :errors])])})
+   ; (ws/send-message! fields)
+   (POST "/api/message"
+         {:format :json
+          :headers {"Accept" "application/json"
+                    "x-csrf-token" (.-value (.getElementById js/document "token"))}
+          :params fields
+          :handler #(rf/dispatch [:message/add (-> fields
+                                                   (assoc :timestamp (js/Date.)))])
+          :error-handler #(rf/dispatch [:form/set-server-errors
+                                        (get-in % [:response :errors])])})
    ; Set server errors to 0, the dispatch above will set them async if they exist
    {:db (dissoc db :form/server-errors)}))
 
@@ -238,7 +238,7 @@
   []
   (.log js.console "Initializing App..")
   (rf/dispatch [:app/initialize])
-  (ws/connect! (str "ws://" (.-host js/location) "/ws") handle-response!)
+  ; (ws/connect! (str "ws://" (.-host js/location) "/ws") handle-response!)
   ; (get-messages)
   (mount-components))
 ; (.log js/console "guestbook.core evaluated!")

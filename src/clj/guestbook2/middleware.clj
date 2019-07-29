@@ -9,7 +9,9 @@
     [guestbook2.middleware.formats :as formats]
     [muuntaja.middleware :refer [wrap-format wrap-params]]
     [guestbook2.config :refer [env]]
-    [ring-ttl-session.core :refer [ttl-memory-store]]
+    [ring.middleware.flash :refer [wrap-flash]]
+    [immutant.web.middleware :refer [wrap-session]]
+    ; [ring-ttl-session.core :refer [ttl-memory-store]]
     [ring.middleware.defaults :refer [site-defaults wrap-defaults]])
   (:import))
 
@@ -42,8 +44,11 @@
 
 (defn wrap-base [handler]
   (-> ((:middleware defaults) handler)
+      wrap-flash
+      (wrap-session {:cookie-attrs {:http-only true}})
       (wrap-defaults
         (-> site-defaults
             (assoc-in [:security :anti-forgery] false)
-            (assoc-in  [:session :store] (ttl-memory-store (* 60 30)))))
+            (dissoc :session)))
+            ; (assoc-in  [:session :store] (ttl-memory-store (* 60 30)))))
       wrap-internal-error))
