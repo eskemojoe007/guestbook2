@@ -5,8 +5,10 @@ generated using Luminus version "3.39"
 This was setup to go through the tutorials found in the pragmatic bookstore.
 In that tutorial a basic template is setup, then is followed by the addition of
 many of different tools.  Here I ran the correct template to make all of that
-easy to add: `lein new luminus guestbook2 +h2 +cljs +reagent +re-frame +swagger`
+easy to add: `lein new luminus guestbook2 +h2 +cljs +reagent +re-frame +swagger +jetty`
 Though `+cljs +reagent` is likely redundant.
+
+Note: `+jetty` wasn't entered, but `jetty` replaced `immutant` as the default just before this project was start, before the documentation was introduced.  
 
 ## Prerequisites
 
