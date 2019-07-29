@@ -26,7 +26,9 @@
         response (try
                    ;; Save the message and return ok with extra ok status.
                    (msg/save-message! message)
-                   (assoc message :timestamp (time/local-date-time))
+                   ;; TODO: Java.util.date is dumb, I wanted to use java-time.
+                   ;; but there may be an issue - https://github.com/dm3/clojure.java-time/issues/15
+                   (assoc message :timestamp (java.util.Date.))
                    ; (ok {:status :ok})
                    (catch Exception e
                      ;; this line is using destructuring from the (ex-data e)
