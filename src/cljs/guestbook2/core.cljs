@@ -16,17 +16,16 @@
 
 ;;;; re-frame functions
 
-
+;; Init
 (rf/reg-event-fx
  :app/initialize
  (fn [_ _]
-   {:db {:messages/loading? true}}))
+   {:db {:messages/loading? true
+         :form/fields {:name ""
+                       :message ""}}
+    :dispatch [:messages/load]}))
 
-(rf/reg-sub
- :messages/loading?
- (fn [db _]
-   (:messages/loading? db)))
-
+;; Mess with messages
 (rf/reg-event-db
  :messages/set
  (fn [db [_ messages]]
@@ -34,61 +33,125 @@
        (assoc :messages/loading? false
               :messages/list messages))))
 
-(rf/reg-sub
- :messages/list
- (fn [db _]
-   (:messages/list db [])))
-
 (rf/reg-event-db
  :message/add
  (fn [db [_ message]]
    (update db :messages/list conj message)))
 
+(rf/reg-sub
+ :messages/loading?
+ (fn [db _]
+   (:messages/loading? db)))
 
+(rf/reg-sub
+ :messages/list
+ (fn [db _]
+   (:messages/list db [])))
+
+
+;; Fields
+(rf/reg-event-db
+ :form/set-field
+ (fn [db [_ id value]]
+   (assoc-in db [:form/fields id] value)))
+
+(rf/reg-event-db
+ :form/clear-fields
+ (fn [db _]
+   (assoc db :form/fields {})))
+
+(rf/reg-sub
+ :form/fields
+ (fn [db _]
+   (:form/fields db)))
+
+(rf/reg-sub
+ :form/field
+ :<- [:form/fields]
+ (fn [fields [_ id]]
+   (get fields id)))
+
+;; Errors
+(rf/reg-event-db
+ :form/set-server-errors
+ (fn [db [_ errors]]
+   (assoc db :form/server-errors errors)))
+
+(rf/reg-sub
+ :form/server-errors
+ (fn [db _]
+   (:form/server-errors db)))
+
+; Use the function from fields to get validation errors
+(rf/reg-sub
+ :form/validation-errors
+ :<- [:form/fields]
+ (fn [fields _]
+   (validate-message fields)))
+
+; See if any errors exist
+(rf/reg-sub
+ :form/validation-errors?
+ :<- [:form/validation-errors]
+ (fn [errors _]
+   (not (empty? errors))))
+
+; All errors
+(rf/reg-sub
+ :form/errors
+ :<- [:form/server-errors]
+ :<- [:form/validation-errors]
+ (fn [[server validation] _]
+   (merge validation server)))
+
+; Get just errors for a specific ID of form
+(rf/reg-sub
+ :form/error
+ :<- [:form/errors]
+ (fn [errors [_ id]]
+   (get errors id)))
+
+;; sending messages as an event instead of a trad function.
+(rf/reg-event-fx
+ :message/send!
+ (fn [{:keys [db]} [_ fields]]
+   (POST "/api/message"
+         {:format :json
+          :headers {"Accept" "application/json"
+                    "x-csrf-token" (.-value (.getElementById js/document "token"))}
+          :params fields
+          :handler #(rf/dispatch [:message/add (-> fields
+                                                   (assoc :timestamp (js/Date.)))])
+          :error-handler #(rf/dispatch [:form/set-server-errors
+                                        (get-in % [:response :errors])])})
+   ; Set server errors to 0, the dispatch above will set them async if they exist
+   {:db (dissoc db :form/server-errors)}))
+
+(rf/reg-event-fx
+ :messages/load
+ (fn [{:keys [db]} _]
+   (GET "/api/messages"
+        {:headers {"Accept" "application/transit+json"}
+         :handler #(rf/dispatch [:messages/set (:messages %)])})
+   ; Similar to above, set loading, :message/set will change to false when done.
+   {:db (assoc db :messages/loading? true)}))
 
 ;;;; Reagent Functions
-
-
-(defn send-message!
-  "Sends form details to api backend."
-  [fields errors]
-  (if-let [validation-errors (validate-message @fields)]
-    (reset! errors validation-errors)
-    (POST "/api/message"
-          {:format :json
-           :headers
-           {"Accept" "application/transit+json"
-            "x-csrf-token" (.-value (.getElementById js/document "token"))}
-           :params @fields
-           :handler #(do
-                       ; (.log js/console (str @fields))
-                       ; (.log js.console (str @messages))
-                       ; (.log js/console (str (conj @messages (assoc @fields :timestamp (js/Date.)))))
-                       ; (swap! messages conj (assoc @fields :timestamp (js/Date.)))
-                       (rf/dispatch [:message/add (-> @fields
-                                                      (assoc :timestamp (js/Date.))
-                                                      (update :name str " [CLIENT]"))])
-                       (reset! errors nil)
-                       (reset! fields nil))
-           :error-handler #(do
-                             (.log js.console (str %))
-                             (reset! errors (get-in % [:response :errors])))})))
-
-(defn get-messages
-  "Gets messages from api and dispatches messages"
-  []
-  (GET "/api/messages"
-       {:headers {"Accept" "application/transit+json"}
-        :handler #(do
-                    ; (.log js/console (str (:messages %)))
-                    (rf/dispatch [:messages/set (:messages %)]))}))
+; (defn get-messages
+;   "Gets messages from api and dispatches messages"
+;   []
+;   (GET "/api/messages"
+;        {:headers {"Accept" "application/transit+json"}
+;         :handler #(do
+;                     ; (.log js/console (str (:messages %)))
+;                     (rf/dispatch [:messages/set (:messages %)]))}))
 
 (defn errors-component
   "React component based on an errors atom.
   errors - r/atom that is used to store our errors.
   id - the key used to extract the kind of error we have"
-  [errors id]
-  (when-let [error (id @errors)]
+  [id]
+  (when-let [error @(rf/subscribe [:form/error id])]
     [:div.notification.is-danger (string/join error)]))
 
 ; (defn message-list-component
@@ -101,33 +164,33 @@
 (defn message-form
   "Component that is a message form"
   []
-  (let [fields (r/atom {})
-        errors (r/atom {})]
-    (fn []
-      [:div
-       [errors-component errors :server-error]
-       [:div.field
-        [:label.label {:for :name} "Name"]
-        [errors-component errors :name]
-        [:input.input
-         {:type :text
-          :name :name
-          :on-change #(swap! fields assoc :name (-> % .-target .-value))
-          :value (:name @fields)}]]
-       [:div.field
-        [:label.label {:for :message} "Message"]
-        [errors-component errors :message]
-        [:textarea.textarea
-         {:type :text
-          :name :message
-          :on-change #(swap! fields assoc :message (-> % .-target .-value))
-          :value (:message @fields)}]]
-       [:input.button.is-primary
-        {:type :submit
-         :on-click #(send-message! fields errors)
-         :value "comment"}]
-       [:p "Name: " (:name @fields)]
-       [:p "Message: " (:message @fields)]])))
+  (fn []
+    [:div
+     [errors-component :server-error]
+     [:div.field
+      [:label.label {:for :name} "Name"]
+      [errors-component :name]
+      [:input.input
+       {:type :text
+        :name :name
+        :on-change #(rf/dispatch [:form/set-field :name (-> % .-target .-value)])
+        :value @(rf/subscribe [:form/field :name])}]]
+     [:div.field
+      [:label.label {:for :message} "Message"]
+      [errors-component :message]
+      [:textarea.textarea
+       {:type :text
+        :name :message
+        :on-change #(rf/dispatch [:form/set-field :message (-> % .-target .-value)])
+        :value @(rf/subscribe [:form/field :message])}]]
+     [:input.button.is-primary
+      {:type :submit
+       ; :on-click #(send-message! (rf/subscribe [:form/fields]) errors)
+       :on-click #(rf/dispatch [:message/send! @(rf/subscribe [:form/fields])])
+       :disabled @(rf/subscribe [:form/validation-errors?])
+       :value "comment"}]
+     [:p "Name: " @(rf/subscribe [:form/field :name])]
+     [:p "Message: " @(rf/subscribe [:form/field :message])]]))
 
 (defn message-list
   [messages]
@@ -165,7 +228,7 @@
   []
   (.log js.console "Initializing App..")
   (rf/dispatch [:app/initialize])
-  (get-messages)
+  ; (get-messages)
   (mount-components))
 ; (.log js/console "guestbook.core evaluated!")
 ; (.log js/console "guestbook.core evaluated 2!")

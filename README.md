@@ -32,6 +32,19 @@ server and figwheel.
 `:nrepl-middleware [cider.piggieback/wrap-cljs-repl]` to your `project.clj` in the
 dev section.
 
+### Usefule Links:
+- https://github.com/eskemojoe007/guestbook - My first version
+- https://github.com/metosin/ring-http-response - ring response
+- http://dm3.github.io/clojure.java-time/java-time.html#var-local-date-time.3F - Clojure.java-time
+- https://clojure.org/guides/destructuring - Destructuring
+- https://github.com/Day8/re-frame/blob/master/docs/CodeWalkthrough.md - Re-frame tutorial
+- https://github.com/Day8/re-frame/blob/master/docs/Interceptors.md - Reframe interceptors (like `rf/path`)
+- Clojure spec - https://clojure.org/about/spec
+- Luminus docs - http://www.luminusweb.net/docs
+- https://www.braveclojure.com/do-things/ - Clojure brave basics
+-  https://github.com/metosin/reitit/blob/master/doc/ring/swagger.md - swagger UI
+- http://localhost:3000/ - My site
+
 ## License
 
 Copyright © 2019 FIXME
