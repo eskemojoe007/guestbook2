@@ -29,7 +29,9 @@
 ;;;; Define Receive message handling
 
 ;; handle-message - multimethod to handle multiple types of inputs
-(defmulti handle-message(fn [{:keys [id]}] id))
+(defmulti handle-message
+  "Multi Function that takes a ws-message and tries to handle it."
+  (fn [{:keys [id]}] id))
 
 (defmethod handle-message :default
   [{:keys [id]}]

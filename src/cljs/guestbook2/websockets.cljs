@@ -22,7 +22,9 @@
                     {:message message}))))
 
 ;;;; Define recieve message handling
-(defmulti handle-message (fn [{:keys [id]} _] id))
+(defmulti handle-message
+  "Multi-method that recieves a ws-message and event."
+  (fn [{:keys [id]} _] id))
 
 (defmethod handle-message :message/add
   [_ msg-add-event]
@@ -47,7 +49,7 @@
 (defn receive-message!
   "Receives the ws-message and extracts the proper info"
   [{:keys [id event] :as ws-message}]
-  (.log js/console "Event Recieved: " (pr-str event))
+  (.log js/console "Event Recieved: " (pr-str id))
   (handle-message ws-message event))
 
 (defstate channel-router
