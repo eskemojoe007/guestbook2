@@ -35,7 +35,11 @@
 
 (defmethod handle-message :default
   [{:keys [id]}]
-  (log/debug "Received unrecognized websocket event type: " id))
+  ; (log/debug "Received unrecognized websocket event type: " id))
+  ;; We want to return an error object
+  {:errors {:server-error [(str "Unreocgnized websocket event type: " (pr-str id))]}})
+  ; {:error (str "Unrecognized websocket event type: " (pr-str id))
+  ;  :id id})
 
 (defmethod handle-message :message/create!
   [{:keys [?data uid] :as message}]
@@ -51,19 +55,26 @@
                          ;; else case - Simple server error map
                          {:errors {:server-error ["Failed to save message!"]}}))))]
     (if (:errors response)
-      (send! uid [:message/creation-errors response])
+      response
+      ; (send! uid [:message/creation-errors response])
       ; No errors - Then we get the UID of the `any` connections and send it
-      (doseq [push-uid (-> socket
-                           :connected-uids
-                           deref
-                           :any)]
-        (send! push-uid [:message/add response])))))
+      (do
+        (doseq [push-uid (-> socket
+                            :connected-uids
+                            deref
+                            :any)]
+          (send! push-uid [:message/add response]))
+        {:success true}))))
 
 (defn receive-message!
   "Global actions for all types of messages."
-  [{:keys [id] :as message}]
+  [{:keys [id ?reply-fn] :as message}]
   (log/debug "Got message with id: " id)
-  (handle-message message))
+  (let [reply-fn (or ?reply-fn (fn [_]))]
+    ;; Run the function and save the response when it exists
+    (when-some [response (handle-message message)]
+      (log/debug "response: " (pr-str response))
+      (reply-fn response))))
 
 ;;;; Create Routers
 

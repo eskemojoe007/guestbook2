@@ -15,11 +15,13 @@
 
 ;; Create helper function to send
 (defn send!
-  [message]
+  "Help function to pass messages through WS to server.
+  Assumes that the ws-message is the first arg."
+  [& args]
   (if-let [send-fn (:send-fn @socket)]
-    (send-fn message)
+    (apply send-fn args)
     (throw (ex-info "Couldn't send message, channel isn't open"
-                    {:message message}))))
+                    {:message (first args)}))))
 
 ;;;; Define recieve message handling
 (defmulti handle-message
@@ -30,9 +32,9 @@
   [_ msg-add-event]
   (rf/dispatch msg-add-event))
 
-(defmethod handle-message :message/creation-errors
-  [_ [_ response]]
-  (rf/dispatch [:form/set-server-errors (:errors response)]))
+#_(defmethod handle-message :message/creation-errors
+   [_ [_ response]]
+   (rf/dispatch [:form/set-server-errors (:errors response)]))
 
 ;; Some basic types of sente's that will happen.
 (defmethod handle-message :chsk/handshake

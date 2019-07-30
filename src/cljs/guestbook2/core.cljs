@@ -117,9 +117,16 @@
 (rf/reg-event-fx
  :message/send!
  (fn [{:keys [db]} [_ fields]]
-   (ws/send! [:message/create! fields])
-   ;; TODO: This clears the fields even if there is a server error.
-   (rf/dispatch [:form/clear-fields])
+   (ws/send!
+    [:message/create! fields] ; Send the create!
+    10000 ; set the timeout to 10 seconds
+
+    ; Set the call back function to complete when
+    (fn [{:keys [success errors] :as response}]
+      (.log js/console "called back: " (pr-str response))
+      (if success
+        (rf/dispatch [:form/clear-fields])
+        (rf/dispatch [:form/set-server-errors errors]))))
 
    ; Set server errors to 0, the dispatch above will set them async if they exist
    {:db (dissoc db :form/server-errors)}))
