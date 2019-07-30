@@ -43,7 +43,7 @@
                    (msg/save-message! ?data)
                    (assoc ?data :timestamp (java.util.Date.))
                    (catch Exception e
-                     (let [{id :guestbook/error-id
+                     (let [{id :guestbook2/error-id
                             errors :errors} (ex-data e)]
                        (case id
                          :validation
