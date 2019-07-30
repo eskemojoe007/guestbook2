@@ -5,7 +5,8 @@
    [ajax.core :refer [GET POST]]
    [clojure.string :as string]
    [guestbook2.validation :refer [validate-message]]
-   [guestbook2.websockets :as ws]))
+   [guestbook2.websockets :as ws]
+   [mount.core :as mount]))
 
 
 ; (-> (.getElementById js/document "content")
@@ -116,7 +117,7 @@
 (rf/reg-event-fx
  :message/send!
  (fn [{:keys [db]} [_ fields]]
-   (ws/send-message! fields)
+   (ws/send! [:message/create! fields])
    (rf/dispatch [:form/clear-fields])
    ; (POST "/api/message"
    ;       {:format :json
@@ -239,8 +240,9 @@
 (defn init!
   []
   (.log js.console "Initializing App..")
+  (mount/start)
   (rf/dispatch [:app/initialize])
-  (ws/connect! (str "ws://" (.-host js/location) "/ws") handle-response!)
+  ; (ws/connect! (str "ws://" (.-host js/location) "/ws") handle-response!)
   ; (get-messages)
   (mount-components))
 ; (.log js/console "guestbook.core evaluated!")

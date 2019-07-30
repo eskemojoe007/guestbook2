@@ -1,62 +1,81 @@
 (ns guestbook2.routes.websockets
   (:require [clojure.tools.logging :as log]
-            [immutant.web.async :as async]
-            [clojure.edn :as edn]
+            [taoensso.sente :as sente]
+            [taoensso.sente.server-adapters.immutant :refer [get-sch-adapter]]
+            [mount.core :refer [defstate]]
             [guestbook2.messages :as msg]
-            [java-time :as time]))
+            [guestbook2.middleware :as middleware]))
+            ; [java-time :as time]))
 
-;; Create a channels attom with a set
-(defonce channels (atom #{}))
+;; Initialize sente
+(defstate socket
+  "Create the socket state using sente"
+  :start (sente/make-channel-socket!
+          (get-sch-adapter)
 
-(defn connect!
-  "This function adds a connection to the channels atom."
-  [channel]
-  (log/info "Channel Open")
-  (swap! channels conj channel))
+          ;; Set user-id-fn since we don't have uid in sessions yet.
+          ;; TODO: When adding users, remove this and use uid
+          {:user-id-fn (fn [ring-req]
+                         (get-in ring-req [:params :client-id]))}))
 
-(defn disconnect!
-  "This function removes a connection with reason from the channels atom."
-  [channel {:keys [code reason]}]
-  (log/info "Channel closed. close code: " code " reason: " reason)
-  (swap! channels disj channel))
+;; Create helper function - send
+(defn send!
+  "Funtion used to send messages through the socket"
+  [uid message]
+  ; (:send-fn socket) gets the send function from the init of the socket
+  ((:send-fn socket) uid message))
 
-(defn handle-message!
-  [channel ws-message]
-  (let [message (edn/read-string ws-message)
-        response (try
-                   ;; Save the message and return ok with extra ok status.
-                   (msg/save-message! message)
-                   ;; TODO: Java.util.date is dumb, I wanted to use java-time.
-                   ;; but there may be an issue - https://github.com/dm3/clojure.java-time/issues/15
-                   (assoc message :timestamp (java.util.Date.))
-                   ; (ok {:status :ok})
+
+;;;; Define Receive message handling
+
+;; handle-message - multimethod to handle multiple types of inputs
+(defmulti handle-message(fn [{:keys [id]}] id))
+
+(defmethod handle-message :default
+  [{:keys [id]}]
+  (log/debug "Received unrecognized websocket event type: " id))
+
+(defmethod handle-message :message/create!
+  [{:keys [?data uid] :as message}]
+  (let [response (try
+                   (msg/save-message! ?data)
+                   (assoc ?data :timestamp (java.util.Date.))
                    (catch Exception e
-                     ;; this line is using destructuring from the (ex-data e)
-                     ;; to get the id and actual errors set by save-message!
-                     (let [{id :guestbook2/error-id
+                     (let [{id :guestbook/error-id
                             errors :errors} (ex-data e)]
-
-                       ;; Depending on ID we'll do different responses
                        (case id
                          :validation
                          {:errors errors}
-                         ; (bad-request {:errors errors})
                          ;; else case - Simple server error map
-                         ; (internal-server-error
                          {:errors {:server-error ["Failed to save message!"]}}))))]
     (if (:errors response)
-      (async/send! channel (pr-str response))
-      (doseq [channel @channels]
-        (async/send! channel (pr-str response))))))
+      (send! uid [:message/creation-errors response])
+      ; No errors - Then we get the UID of the `any` connections and send it
+      (doseq [push-uid (-> socket
+                           :connected-uids
+                           deref
+                           :any)]
+        (send! push-uid [:message/add response])))))
 
-(defn handler
-  [request]
-  (async/as-channel
-   request
-   {:on-open connect!
-    :on-close disconnect!
-    :on-message handle-message!}))
+(defn receive-message!
+  "Global actions for all types of messages."
+  [{:keys [id] :as message}]
+  (log/debug "Got message with id: " id)
+  (handle-message message))
 
+;;;; Create Routers
+
+;; channel-router connects our sente socket to incoming messages
+;; has to be a defstate so mount loads it after it makes socket
+(defstate channel-router
+  "Creates a `go-loop` connecting incoming messages to the right functions"
+  :start (sente/start-chsk-router! (:ch-recv socket) #'receive-message!)
+  :stop (when-let [stop-fn channel-router] (stop-fn)))
+
+;; Backup ajax if ws doesn't work.
 (defn websocket-routes
   []
-  ["/ws" {:get handler}])
+  ["/ws" {:middleware [middleware/wrap-csrf
+                       middleware/wrap-formats]
+          :get (:ajax-get-or-ws-handshake-fn socket)
+          :post (:ajax-post-fn socket)}])
